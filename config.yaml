@@ -1,0 +1,50 @@
+# Configuration for Industrial Part Counting Pipeline
+# Tune these parameters per part type (shape, size, reflectivity, background)
+
+paths:
+  input_dir: "dataset"          # Folder of raw images (or single image path)
+  output_dir: "output_results"   # Directory where annotated overlay images and summary CSV are saved
+  sam_checkpoint: "weights/sam_vit_h_4b8939.pth" # Path to SAM weights (Downloaded in Colab)
+  model_type: "vit_h"           # SAM model type: 'vit_h', 'vit_l', or 'vit_b'
+  ground_truth_csv: ""          # Optional CSV path for evaluation mode (filename, true_count)
+
+preprocessing:
+  max_dimension: 1280           # Downscale large images while maintaining aspect ratio (0 to disable)
+  use_clahe: true               # Apply Contrast Limited Adaptive Histogram Equalization for lighting normalization
+  clahe_clip_limit: 2.5         # Threshold for contrast limiting
+  clahe_tile_grid_size: [8, 8]  # Size of grid for histogram equalization
+  roi_crop: null                # Optional manual crop [ymin, xmin, ymax, xmax] in pixels or normalized [0-1]. Set null for full image.
+
+sam:
+  backend: "segment-anything"   # Backend implementation: 'segment-anything' or 'ultralytics'
+  points_per_side: 32           # Sampling density along image side (higher = detects smaller parts, slower)
+  pred_iou_thresh: 0.86         # Filtering threshold for mask quality confidence (0.0 to 1.0)
+  stability_score_thresh: 0.90  # Mask stability threshold against cutoff variations (0.0 to 1.0)
+  min_mask_area: 200            # Minimum pixel area of a valid part mask (reject noise)
+  max_mask_area: 150000         # Maximum pixel area of a valid part mask (reject tray/background/box)
+  min_aspect_ratio: 0.2         # Minimum width/height ratio (reject long thin lines/cracks)
+  max_aspect_ratio: 5.0         # Maximum width/height ratio
+  box_nms_thresh: 0.7           # Non-maximum suppression threshold for overlapping mask proposals
+  crop_n_layers: 0              # If > 0, re-runs mask prediction on crop layers for tiny objects
+
+cv_watershed:
+  blur_kernel_size: 5           # Gaussian blur kernel size (must be odd integer)
+  threshold_method: "otsu"      # Thresholding mode: 'otsu' or 'adaptive'
+  adaptive_block_size: 15       # Block size for adaptive thresholding (must be odd)
+  adaptive_c: 2                 # Constant subtracted from adaptive threshold mean
+  use_morphology: true          # Apply morphological opening to decouple noise
+  morph_kernel_size: 3          # Kernel size for morphology
+  dist_transform_mask_size: 5   # Distance transform mask size (3 or 5)
+  dist_threshold_factor: 0.4    # Fraction of max distance to treat as seed peaks (0.1 to 0.9, lower = splits more)
+  min_part_area: 150            # Minimum area of detected component
+  max_part_area: 150000         # Maximum area of detected component
+  min_aspect_ratio: 0.2         # Min aspect ratio for CV detected contours
+  max_aspect_ratio: 5.0         # Max aspect ratio for CV detected contours
+
+visualization:
+  draw_contours: true
+  draw_bounding_boxes: true
+  draw_labels: true             # Number each detected part with integer index
+  label_font_scale: 0.5
+  label_thickness: 1
+  overlay_alpha: 0.45           # Transparency of mask color fill
